@@ -1,0 +1,23 @@
+/* Create temp table for test with test values */
+drop table zwm_test_json;
+create table zwm_test_json (col1 VARCHAR(1000));
+insert into zwm_test_json values ('{"col1":"v1",Relegation Date May 13 2022 12:00AM:"","Writeoff Date":""}');
+insert into zwm_test_json values ('{"col1":"v1",Relegation Date June 6 2021 12:00AM:"","Writeoff Date":""}');
+insert into zwm_test_json values ('{"col1":"v1",Relegation Date January 31 2010 12:00AM:"","Writeoff Date":""}');
+
+/* First correct the json format of the relegation date keeping the value of the date (in the incorrect format) */
+update zwm_test_json set col1 = substr(col1, 1, instr(col1,',Relegation Date ')-1)
+  ||',"Relegation Date":"'||substr(col1, instr(col1,',Relegation Date ')+17, instr(substr(col1, instr(col1,',Relegation Date ')+17),' 12:00AM')-1)||'"'
+  || substr(col1, instr(col1, ' 12:00AM:""')+11);
+
+/* Check the result */
+select * from zwm_test_json;
+
+/* Check the that the column can be transformed */
+select json_transform(col1, SET '$."Relegation Date"' = (to_char(to_date(json_value(col1,'$."Relegation Date"'),'MONTH DD YYYY'),'YYYYMMDD'))) from zwm_test_json;
+
+/* Modify (transform) the date format in the dataset */
+update zwm_test_json set col1 = json_transform(col1, SET '$."Relegation Date"' = (to_char(to_date(json_value(col1,'$."Relegation Date"'),'MONTH DD YYYY'),'YYYYMMDD')));
+
+/* Check the result */
+select * from zwm_test_json;
